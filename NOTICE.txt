@@ -1,0 +1,23 @@
+Moto's Macro Bar 1.0.2
+New standalone module and modifications by Moto, 2026-11-01.
+Distributed under the GNU General Public License, version 3 (see LICENSE).
+This archive contains the complete, editable source; no build step is required.
+
+Acknowledgment and adapted material:
+Monk's Hotbar Expansion 13.01, by IronMonk (IronMonk108).
+https://github.com/ironmonk108/hotbar-expansion
+The supplied original includes the GNU GPL version 3 license.
+The macro-slot styling in slots.css is adapted from its hotbar-expansion.css.
+The five-page hotbar concept and compatible row naming were informed by that
+module. This version adds its own page builder using Foundry's native Hotbar,
+fixed layout selection, proportional fitting, client master switch, and optional
+Carolingian UI integration. It does not import or require Monk's module.
+
+Carolingian UI, by Carolingian, is an independent optional module.
+Compatibility was checked against its supplied version 2.31.6. No Carolingian
+source is included in this package. No affiliation or endorsement is implied.
+
+Foundry Virtual Tabletop is required and remains separately licensed.
+Foundry's core templates and source are not included in this package.
+
+This software comes WITHOUT ANY WARRANTY; see LICENSE for details.

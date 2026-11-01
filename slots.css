@@ -1,0 +1,46 @@
+/* Adapted from Monk's Hotbar Expansion 13.01, IronMonk, GPL-3.0.
+   Modified 2026-11-01 for Moto's Macro Bar: standalone, scoped slot styling.
+   See NOTICE.txt and LICENSE. */
+#hotbar.mmb-owned .hotbar-page .action-bar {
+    display: flex;
+    flex: none;
+    gap: 8px;
+    height: var(--hotbar-size);
+    pointer-events: all;
+}
+#hotbar.mmb-owned .action-bar .slot {
+    position: relative;
+    flex: none;
+    width: var(--hotbar-size);
+    height: var(--hotbar-size);
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: var(--slot-color, var(--color-cool-5-90));
+    cursor: var(--cursor-pointer);
+}
+#hotbar.mmb-owned .action-bar .slot .key {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    line-height: 20px;
+    padding-right: 2px;
+    background: var(--key-bg-color-empty, var(--color-cool-5));
+    border-radius: 10px 0 8px 0;
+    color: var(--key-text-color, var(--color-light-1));
+    text-align: center;
+    pointer-events: none;
+}
+#hotbar.mmb-owned .action-bar .slot.full .key { background: var(--key-bg-color-full, var(--color-cool-5)); }
+#hotbar.mmb-owned .action-bar .slot .slot-icon {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 10px;
+    pointer-events: none;
+}
+#hotbar.mmb-owned .action-bar .slot:hover { border-color: var(--color-warm-1); }
+#hotbar.mmb-owned .action-bar .slot.drop-target {
+    background: var(--color-cool-4);
+    border-color: var(--color-warm-2);
+}

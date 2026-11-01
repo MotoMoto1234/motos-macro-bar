@@ -1,0 +1,77 @@
+#hotbar.mmb-active {
+    position: relative !important;
+    width: var(--mmb-width) !important;
+    height: var(--mmb-height) !important;
+    max-width: none !important;
+    flex: none !important;
+    transform: translateX(var(--mmb-shift, 0px)) scale(var(--mmb-fit, 1)) !important;
+    transform-origin: center bottom !important;
+    transition: opacity 150ms !important;
+    overflow: visible !important;
+}
+#hotbar.mmb-active > #action-bar { display: none !important; }
+#hotbar.mmb-active #hotbar-page,
+#hotbar.mmb-active #hotbar-page .hotbar-page-row,
+#hotbar.mmb-active #hotbar-page .macro-list {
+    display: contents !important;
+}
+#hotbar.mmb-active #hotbar-page .action-bar {
+    position: absolute !important;
+    left: var(--mmb-x) !important;
+    top: var(--mmb-y) !important;
+    width: var(--mmb-bar-width) !important;
+    height: var(--mmb-bar-height) !important;
+    flex-wrap: nowrap !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+#hotbar.mmb-active > :is(#hotbar-controls-left, #hotbar-controls-right) {
+    position: absolute !important;
+    bottom: 0 !important;
+    margin: 0 !important;
+    width: max-content !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: none !important;
+}
+#hotbar.mmb-active > #hotbar-controls-right > :is(nav, div) {
+    flex: none !important;
+    width: max-content !important;
+    min-width: 0 !important;
+}
+#hotbar.mmb-active .hotbar-controls .ui-control {
+    box-sizing: border-box !important;
+    width: var(--control-size, 24px) !important;
+    min-width: var(--control-size, 24px) !important;
+    max-width: var(--control-size, 24px) !important;
+    flex: none !important;
+}
+#hotbar.mmb-active #hotbar-page-controls { display: none !important; }
+#hotbar.mmb-active > #hotbar-controls-left { left: 0 !important; }
+#hotbar.mmb-active > #hotbar-controls-right { right: 0 !important; }
+#hotbar.mmb-active #hotbar-controls-right [data-action="clear"] { display: none !important; }
+#hotbar.mmb-active.mmb-auto-hide {
+    margin-bottom: calc(10px - var(--mmb-height) * var(--mmb-fit, 1)) !important;
+    background: var(--control-bg-color);
+}
+#hotbar.mmb-active.mmb-auto-hide:is(:hover, :focus) { margin-bottom: 16px !important; }
+#hotbar.mmb-active.mmb-auto-hide:not(:hover):not(:focus) > *,
+#hotbar.mmb-active.mmb-auto-hide:not(:hover):not(:focus) #hotbar-page .action-bar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+body.crlngn-ui #interface #hotbar.mmb-active.collapsed {
+    margin-bottom: calc(10px - var(--mmb-height) * var(--mmb-fit, 1)) !important;
+}
+body.crlngn-ui #interface #hotbar.mmb-active.collapsed:is(:hover, :focus) {
+    margin-bottom: 16px !important;
+}
+body.crlngn-ui #interface #hotbar.mmb-active.collapsed:not(:hover):not(:focus) #hotbar-page .action-bar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+body.crlngn-ui #interface #hotbar.mmb-active.collapsed:is(:hover, :focus) > * {
+    opacity: 1 !important;
+}
+

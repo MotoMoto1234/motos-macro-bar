@@ -1,0 +1,12 @@
+{
+  "id": "motos-macro-bar",
+  "title": "Moto's Macro Bar",
+  "description": "Five macro pages in a fixed, shrink-to-fit layout. Client-side opt-in with Carolingian UI compatibility. Includes styling adapted from Monk's Hotbar Expansion by IronMonk (GPLv3); see NOTICE.txt and LICENSE.",
+  "version": "1.0.2",
+  "authors": [{ "name": "Moto" }],
+  "compatibility": { "minimum": "13.351", "verified": "13.351", "maximum": "13" },
+  "license": "LICENSE",
+  "readme": "README.txt",
+  "esmodules": ["responsive-hotbar.js"],
+  "styles": ["slots.css", "responsive-hotbar.css"]
+}
