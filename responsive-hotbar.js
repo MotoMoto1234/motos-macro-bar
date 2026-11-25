@@ -1,4 +1,4 @@
-import { conflictingModules, installHotbar, syncHideControl } from "./hotbar.mjs";
+import { conflictingModules, installHotbar, restoreControls, syncControls } from "./hotbar.mjs";
 import { chooseLayout } from "./layout.mjs";
 
 let frame = 0;
@@ -7,8 +7,9 @@ let mutationObserver;
 let monitoring = false;
 let initialized = false;
 let observed = new Set();
-let unscaledSize = (element, dimension) => {
-    let style = getComputedStyle(element);
+let mutationTargets = new Map();
+let metrics;
+let unscaledSize = (element, dimension, style = getComputedStyle(element)) => {
     let size = parseFloat(style[dimension]);
     if (!Number.isFinite(size)) return dimension === "width" ? element.offsetWidth : element.offsetHeight;
     if (style.boxSizing === "border-box") return size;
@@ -21,20 +22,49 @@ let setPixels = (element, name, value) => {
     if (element.style.getPropertyValue(name) !== text) element.style.setProperty(name, text);
 };
 let schedule = () => {
+    metrics = undefined;
     if (monitoring && !frame) frame = requestAnimationFrame(() => { frame = 0; update(); });
 };
-let structuralSelector = "#hotbar, #players, #players-active, #sidebar, #sidebar-tabs, #chat-notifications";
-let attributeSelector = `${structuralSelector}, #ui-middle, #ui-bottom, #ui-right, #hotbar-controls-left, #hotbar-controls-right, #chat-notifications .chat-log`;
+let structuralSelector = "#interface, #ui-middle, #ui-bottom, #ui-right, #hotbar, #players, #players-active, #sidebar, #sidebar-tabs, #chat-notifications";
+let attributeSelector = `${structuralSelector}, #hotbar-controls-right, #chat-notifications .chat-log`;
 
 function affectsLayout(record) {
     if (record.type === "childList") {
         if (record.target.closest("#hotbar")) return true;
         return [...record.addedNodes, ...record.removedNodes].some(node => node instanceof Element &&
-            (node.matches(structuralSelector) || node.querySelector(structuralSelector)));
+            (node.matches(structuralSelector) || node.querySelector(structuralSelector)
+                || node.matches(".chat-log") && record.target.id === "chat-notifications"));
     }
     if (record.target === document.body || record.target === document.documentElement) return true;
-    if (record.attributeName === "style" && record.target.closest("#hotbar")) return false;
-    return record.target.matches(attributeSelector);
+    if (record.attributeName === "style" && record.target.closest("#hotbar")) {
+        let externalStyle = text => (text ?? "").split(";").map(value => value.trim())
+            .filter(value => value && !value.startsWith("--mmb-")).join(";");
+        return externalStyle(record.oldValue) !== externalStyle(record.target.getAttribute("style"));
+    }
+    return record.target.matches(attributeSelector) || mutationTargets.has(record.target);
+}
+
+function observeLayout() {
+    if (!monitoring) return;
+    let targets = new Map();
+    for (let element of document.querySelectorAll(attributeSelector)) {
+        targets.set(element, element.id === "hotbar");
+        for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+            if (!targets.has(parent)) targets.set(parent, false);
+        }
+    }
+    targets.set(document.body, false);
+    targets.set(document.documentElement, false);
+    if (targets.size === mutationTargets.size && [...targets].every(([element, subtree]) =>
+        mutationTargets.get(element) === subtree)) return;
+    mutationObserver.disconnect();
+    for (let [element, subtree] of targets) {
+        mutationObserver.observe(element, {
+            childList: !element.matches("#chat-notifications .chat-log"), subtree,
+            attributes: true, attributeOldValue: true, attributeFilter: ["class", "style", "hidden"]
+        });
+    }
+    mutationTargets = targets;
 }
 
 function stopMonitoring() {
@@ -44,6 +74,8 @@ function stopMonitoring() {
     mutationObserver?.disconnect();
     resizeObserver?.disconnect();
     observed.clear();
+    mutationTargets.clear();
+    metrics = undefined;
     window.removeEventListener("resize", schedule);
 }
 
@@ -56,10 +88,7 @@ function configureMonitoring() {
     }
     if (!monitoring) {
         monitoring = true;
-        mutationObserver.observe(document.body, {
-            subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style", "hidden"]
-        });
-        mutationObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+        observeLayout();
         window.addEventListener("resize", schedule);
     }
     schedule();
@@ -79,10 +108,12 @@ let visibleRect = element => {
 
 function update() {
     if (conflictingModules()) return;
+    observeLayout();
     let hotbar = document.getElementById("hotbar");
     if (!hotbar) return;
     if (!game.settings.get("motos-macro-bar", "enabled")) {
         if (hotbar.classList.contains("mmb-active")) hotbar.classList.remove("mmb-active");
+        restoreControls(hotbar);
         delete hotbar.dataset.responsiveLayout;
         for (let element of [hotbar, ...hotbar.querySelectorAll(".hotbar-page-row")]) {
             for (let property of [...element.style]) {
@@ -92,23 +123,37 @@ function update() {
         stopMonitoring();
         return;
     }
-    syncHideControl(hotbar);
+    let controls = syncControls(hotbar);
     let page = hotbar.querySelector("#hotbar-page");
     let rows = [...hotbar.querySelectorAll(".hotbar-page-row")];
-    let enabled = hotbar.classList.contains("mmb-owned") && page && rows.length === 5;
+    let enabled = controls && page && rows.length === 5;
     hotbar.classList.toggle("mmb-active", Boolean(enabled));
     if (!enabled) return;
+    let arrangement = game.settings.get("motos-macro-bar", "layout");
+    if (hotbar.dataset.responsiveLayout !== arrangement) hotbar.dataset.responsiveLayout = arrangement;
     let parent = hotbar.parentElement;
-    let scale = parent.getBoundingClientRect().width / parent.offsetWidth || 1;
+    let parentRect = parent.getBoundingClientRect();
+    let scale = parentRect.width / parent.offsetWidth || 1;
     let bar = rows[0].querySelector(".action-bar");
     let slots = [...bar.querySelectorAll(".slot")];
-    let style = getComputedStyle(bar);
-    let barWidth = slots.reduce((sum, slot) => sum + unscaledSize(slot, "width"), 0)
-        + (parseFloat(style.columnGap) || 0) * (slots.length - 1);
-    let barHeight = Math.max(...slots.map(slot => unscaledSize(slot, "height")));
+    if (!metrics || metrics.bar !== bar || metrics.controls !== controls || metrics.arrangement !== arrangement) {
+        let style = getComputedStyle(bar);
+        let controlsStyle = getComputedStyle(controls);
+        let sizes = slots.map(slot => {
+            let slotStyle = getComputedStyle(slot);
+            return {width: unscaledSize(slot, "width", slotStyle), height: unscaledSize(slot, "height", slotStyle)};
+        });
+        metrics = {
+            bar, controls, arrangement,
+            barWidth: sizes.reduce((sum, size) => sum + size.width, 0)
+                + (parseFloat(style.columnGap) || 0) * (slots.length - 1),
+            barHeight: Math.max(...sizes.map(size => size.height)),
+            controlWidth: unscaledSize(controls, "width", controlsStyle),
+            controlHeight: unscaledSize(controls, "height", controlsStyle)
+        };
+    }
+    let {barWidth, barHeight, controlWidth, controlHeight} = metrics;
     if (!barWidth || !barHeight) return;
-    let leftGlobal = unscaledSize(hotbar.querySelector("#hotbar-controls-left"), "width") + 4;
-    let rightGlobal = unscaledSize(hotbar.querySelector("#hotbar-controls-right"), "width") + 4;
     let left = 8;
     let right = document.documentElement.clientWidth - 8;
     let obstacles = [...document.querySelectorAll("#players, #players-active, #sidebar, #sidebar-tabs")];
@@ -123,27 +168,33 @@ function update() {
         if (obstacle.id.startsWith("players")) left = Math.max(left, rect.right + 8);
         else right = Math.min(right, rect.left - 8);
     }
-    let arrangement = game.settings.get("motos-macro-bar", "layout");
     let layout = chooseLayout(arrangement, (right - left) / scale, barWidth, barHeight,
-        leftGlobal, rightGlobal, page.classList.contains("reverse"));
-    hotbar.dataset.responsiveLayout = arrangement;
+        controlWidth, controlHeight, page.classList.contains("reverse"));
+    let previousShift = parseFloat(hotbar.style.getPropertyValue("--mmb-shift")) || 0;
+    let rect = hotbar.getBoundingClientRect();
+    let naturalCenter = (rect.left + rect.right) / 2 - previousShift * scale;
+    let fittedScale = scale * (layout.fit || 1);
+    let bottomInset = (document.documentElement.clientHeight - rect.bottom) / fittedScale;
+    let screenBottom = layout.height + bottomInset;
     let fit = String(layout.fit);
     if (hotbar.style.getPropertyValue("--mmb-fit") !== fit) hotbar.style.setProperty("--mmb-fit", fit);
     setPixels(hotbar, "--mmb-width", layout.width);
     setPixels(hotbar, "--mmb-height", layout.height);
     setPixels(hotbar, "--mmb-bar-width", barWidth);
     setPixels(hotbar, "--mmb-bar-height", barHeight);
-    let previousShift = parseFloat(hotbar.style.getPropertyValue("--mmb-shift")) || 0;
-    let rect = hotbar.getBoundingClientRect();
-    let naturalCenter = (rect.left + rect.right) / 2 - previousShift * scale;
+    setPixels(hotbar, "--mmb-controls-x", layout.controls.x);
+    setPixels(hotbar, "--mmb-controls-y", layout.controls.y);
+    setPixels(hotbar, "--mmb-page-slide", screenBottom + 2 / fittedScale);
+    setPixels(hotbar, "--mmb-dock-slide", screenBottom - layout.controls.y - controlHeight - 4 / fittedScale);
+    setPixels(hotbar, "--mmb-edge-bottom", -bottomInset);
+    setPixels(hotbar, "--mmb-edge-top", screenBottom - 8 / fittedScale);
     setPixels(hotbar, "--mmb-shift", ((left + right) / 2 - naturalCenter) / scale);
     for (let placement of layout.pages) {
         let row = rows.find(row => Number(row.dataset.page) === placement.page);
         setPixels(row, "--mmb-x", placement.x);
         setPixels(row, "--mmb-y", placement.y);
     }
-    let targets = new Set([parent, hotbar, ...slots, ...obstacles,
-        hotbar.querySelector("#hotbar-controls-left"), hotbar.querySelector("#hotbar-controls-right")]);
+    let targets = new Set([parent, hotbar, controls, ...slots, ...obstacles]);
     for (let target of observed) if (!targets.has(target)) resizeObserver.unobserve(target);
     for (let target of targets) if (!observed.has(target)) resizeObserver.observe(target);
     observed = targets;
@@ -159,7 +210,10 @@ Hooks.once("init", () => {
         }
     });
     game.settings.register("motos-macro-bar", "auto-hide", {
-        scope: "client", config: false, type: Boolean, default: false, onChange: schedule
+        scope: "client", config: false, type: Boolean, default: false
+    });
+    game.settings.register("motos-macro-bar", "visibility", {
+        scope: "client", config: false, type: String, default: "", onChange: schedule
     });
     game.settings.register("motos-macro-bar", "enabled", {
         name: "Enable Moto's Macro Bar",

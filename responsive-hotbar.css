@@ -8,9 +8,19 @@
     transform-origin: center bottom !important;
     transition: opacity 150ms !important;
     overflow: visible !important;
+    pointer-events: none;
 }
-#hotbar.mmb-active > #action-bar { display: none !important; }
-#hotbar.mmb-active #hotbar-page,
+#hotbar.mmb-active > :is(#action-bar, #hotbar-controls-left) { display: none !important; }
+#hotbar.mmb-active > #hotbar-page {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    pointer-events: none;
+    transform: translateY(var(--mmb-pages-offset, 0px));
+    transition: transform 180ms ease-out;
+}
 #hotbar.mmb-active #hotbar-page .hotbar-page-row,
 #hotbar.mmb-active #hotbar-page .macro-list {
     display: contents !important;
@@ -25,53 +35,86 @@
     margin: 0 !important;
     padding: 0 !important;
 }
-#hotbar.mmb-active > :is(#hotbar-controls-left, #hotbar-controls-right) {
+#hotbar.mmb-active > #hotbar-controls-right {
     position: absolute !important;
-    bottom: 0 !important;
+    left: var(--mmb-controls-x, 0px) !important;
+    top: var(--mmb-controls-y, 0px) !important;
+    right: auto !important;
+    bottom: auto !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 3px !important;
     margin: 0 !important;
+    padding: 4px !important;
     width: max-content !important;
+    height: max-content !important;
     min-width: 0 !important;
+    min-height: 0 !important;
     max-width: none !important;
     flex: none !important;
+    border: 1px solid var(--control-border-color, var(--color-cool-3, #3d3f50)) !important;
+    border-radius: 12px !important;
+    background: var(--control-bg-color, var(--color-cool-5-90, #141522)) !important;
+    pointer-events: auto;
+    transform: translateY(var(--mmb-controls-offset, 0px));
+    transition: transform 180ms ease-out;
+    z-index: 1;
 }
-#hotbar.mmb-active > #hotbar-controls-right > :is(nav, div) {
-    flex: none !important;
-    width: max-content !important;
-    min-width: 0 !important;
+#hotbar.mmb-active[data-responsive-layout="3:2"] > #hotbar-controls-right {
+    flex-direction: column !important;
 }
-#hotbar.mmb-active .hotbar-controls .ui-control {
+#hotbar.mmb-active > #hotbar-controls-right > :not(button) { display: none !important; }
+#hotbar.mmb-active > #hotbar-controls-right > :is([data-action="menu"], [data-action="lock"], [data-action="motoToggleVisibility"]) {
     box-sizing: border-box !important;
+    display: grid !important;
+    place-items: center;
     width: var(--control-size, 24px) !important;
     min-width: var(--control-size, 24px) !important;
     max-width: var(--control-size, 24px) !important;
+    height: var(--control-size, 24px) !important;
+    min-height: var(--control-size, 24px) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 7px !important;
     flex: none !important;
 }
-#hotbar.mmb-active #hotbar-page-controls { display: none !important; }
-#hotbar.mmb-active > #hotbar-controls-left { left: 0 !important; }
-#hotbar.mmb-active > #hotbar-controls-right { right: 0 !important; }
-#hotbar.mmb-active #hotbar-controls-right [data-action="clear"] { display: none !important; }
-#hotbar.mmb-active.mmb-auto-hide {
-    margin-bottom: calc(10px - var(--mmb-height) * var(--mmb-fit, 1)) !important;
-    background: var(--control-bg-color);
+#hotbar.mmb-active > #hotbar-controls-right > button:not([data-action="menu"], [data-action="lock"], [data-action="motoToggleVisibility"]) {
+    display: none !important;
 }
-#hotbar.mmb-active.mmb-auto-hide:is(:hover, :focus) { margin-bottom: 16px !important; }
-#hotbar.mmb-active.mmb-auto-hide:not(:hover):not(:focus) > *,
-#hotbar.mmb-active.mmb-auto-hide:not(:hover):not(:focus) #hotbar-page .action-bar {
-    opacity: 0 !important;
+#hotbar.mmb-active #hotbar-page .action-bar .slot {
+    border-radius: 10px !important;
+    overflow: hidden;
+}
+#hotbar.mmb-active #hotbar-page .action-bar .slot-icon { border-radius: inherit !important; }
+#hotbar.mmb-active[data-mmb-visibility="hide"] {
+    --mmb-pages-offset: var(--mmb-page-slide, 0px);
+    --mmb-controls-offset: var(--mmb-dock-slide, 0px);
+}
+#hotbar.mmb-active[data-mmb-visibility="auto-hide"]:not(:is(:hover, :focus-visible, :has(:focus-visible))) {
+    --mmb-pages-offset: var(--mmb-page-slide, 0px);
+    --mmb-controls-offset: var(--mmb-page-slide, 0px);
+}
+#hotbar.mmb-active[data-mmb-visibility="hide"] #hotbar-page .action-bar,
+#hotbar.mmb-active[data-mmb-visibility="auto-hide"]:not(:is(:hover, :focus-visible, :has(:focus-visible)))
+    :is(#hotbar-page .action-bar, #hotbar-controls-right, #hotbar-controls-right > button) {
     pointer-events: none !important;
 }
-
-body.crlngn-ui #interface #hotbar.mmb-active.collapsed {
-    margin-bottom: calc(10px - var(--mmb-height) * var(--mmb-fit, 1)) !important;
+#hotbar > .mmb-hover-area { display: none; }
+#hotbar.mmb-active[data-mmb-visibility="auto-hide"] > .mmb-hover-area {
+    display: block;
+    position: absolute;
+    inset-inline: 0;
+    top: var(--mmb-edge-top, 100%);
+    bottom: var(--mmb-edge-bottom, 0px);
+    pointer-events: auto;
 }
-body.crlngn-ui #interface #hotbar.mmb-active.collapsed:is(:hover, :focus) {
-    margin-bottom: 16px !important;
+#hotbar.mmb-active[data-mmb-visibility="auto-hide"]:is(:hover, :focus-visible, :has(:focus-visible)) > .mmb-hover-area {
+    top: 0;
 }
-body.crlngn-ui #interface #hotbar.mmb-active.collapsed:not(:hover):not(:focus) #hotbar-page .action-bar {
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-body.crlngn-ui #interface #hotbar.mmb-active.collapsed:is(:hover, :focus) > * {
-    opacity: 1 !important;
+@media (prefers-reduced-motion: reduce) {
+    #hotbar.mmb-active > :is(#hotbar-page, #hotbar-controls-right) {
+        transition: none;
+    }
 }
 

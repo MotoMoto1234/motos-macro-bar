@@ -1,4 +1,4 @@
-Moto's Macro Bar 1.0.2
+Moto's Macro Bar 1.0.4
 
 A standalone Foundry VTT module by Moto. Displays all five macro pages in a
 fixed layout that shrinks to fit between the player list and the sidebar.
@@ -48,11 +48,18 @@ Per-page trash buttons and number-selector rails are omitted.
 The current-page clear-all button is hidden in the expanded layout; use the
 native right-click menu to remove individual macros.
 
-When Carolingian adds its far-right hide-all button, Moto's uses that control and
-corrects the collapse distance for the full scaled height. Otherwise Moto's
-provides its own far-right auto-hide button. Both leave a small reveal strip;
-hover to reveal the bar and use the arrow again to keep it visible.
-Moto's own auto-hide preference is stored per client.
+Menu, collapse, and lock share one rounded control group. The group sits above
+the center macros or, in the 3:2 layout, stacks vertically to the right.
+The native mute button is hidden while Moto's is enabled.
+Left-click the middle button to switch between Show and Hide. Right-click
+it to toggle Auto-hide. Turning Auto-hide off restores the preceding manual
+mode. Left-clicking while Auto-hide is active switches to Hide. Hide slides
+the macros below the screen and leaves the control group visible. Auto-hide tucks
+away the controls as well. Hover along the bottom edge beneath the bar to reveal
+it. It stays open while your pointer is anywhere across the bar, including the
+gaps, and can also be revealed with keyboard focus.
+The mode is saved per client. Moto's control manages all three modes when
+Carolingian UI is enabled.
 
 Notification Pip mode reclaims the empty side notification area. Chat Cards
 reserves that space only when Foundry's notification log is enabled/visible.
@@ -77,8 +84,24 @@ Interaction checks execute the supplied Foundry 13.351 Hotbar and DragDrop code
 in an isolated browser harness with Moto's page builder and no Monk's module.
 They cover all 50 slots, macro execution, empty-slot creation, cross-page drag
 and drop, lock enforcement, right-click removal, re-rendering, client disable/
-enable, reverse ordering, hide-button coexistence, and conflicting-module guard.
+enable, reverse ordering, left- and right-click visibility controls, and
+Carolingian collapse restoration when Moto's is disabled.
 These are controlled tests, not a full running-world test of every other module.
+
+PERFORMANCE IN 1.0.3
+Replaced page-wide subtree observation with targeted UI observations and shallow
+ancestor watches, retaining support for replaced hotbar/sidebar containers.
+Chat-message content changes no longer reach the mutation observer. Body and
+interface theme/scale changes, notification visibility, and control changes
+remain monitored. Own layout style writes are ignored while external hotbar
+style changes invalidate measurements.
+Slot and control dimensions are cached until layout notifications invalidate
+them. Width and height share one computed-style read per slot. Geometry reads
+now precede layout style writes, removing the post-write positioning read.
+Browser checks cover chat bursts, container replacements, cache reuse and size
+invalidation, in addition to the previous layout and interaction checks.
+This reduces unnecessary UI work; it does not establish the cause of any
+particular live-session slowdown.
 
 MAINTENANCE IN 1.0.2
 Removed obsolete Monk-only control rules and page-collapse handling. Disabling

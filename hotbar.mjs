@@ -7,30 +7,91 @@ export function conflictingModules() {
         .some(id => game.modules.get(id)?.active);
 }
 
-export function syncHideControl(hotbar) {
+const visibilityModes = {
+    show: {label: "Show", icon: "fa-eye"},
+    hide: {label: "Hide", icon: "fa-eye-slash"},
+    "auto-hide": {label: "Auto-hide", icon: "fa-angle-up"}
+};
+const rightClickModes = {
+    show: "auto-hide",
+    hide: "auto-hide-from-hide",
+    "auto-hide": "show",
+    "auto-hide-from-hide": "hide"
+};
+const suppressedCollapse = new WeakSet();
+
+function getVisibilityPreference() {
+    const saved = game.settings.get("motos-macro-bar", "visibility");
+    if (Object.hasOwn(rightClickModes, saved)) return saved;
+    return game.settings.get("motos-macro-bar", "auto-hide") ? "auto-hide" : "show";
+}
+
+export function syncControls(hotbar) {
     if (!hotbar.classList.contains("mmb-owned")) return;
     let controls = hotbar.querySelector("#hotbar-controls-right");
     if (!controls) return;
-    let carolingian = controls.querySelector("#hotbar-collapse-btn");
-    let own = controls.querySelector("[data-action=motoToggleHide]");
-    if (carolingian) own?.remove();
-    else if (!own) {
-        own = document.createElement("button");
-        own.type = "button";
-        own.className = "ui-control icon fa-solid";
-        own.dataset.action = "motoToggleHide";
-        controls.append(own);
+    let menu = hotbar.querySelector('button[data-action="menu"]');
+    let lock = controls.querySelector('button[data-action="lock"]');
+    if (!menu || !lock) return;
+    if (!controls.classList.contains("mmb-control-group")) {
+        controls.classList.add("mmb-control-group");
+        controls.setAttribute("role", "group");
+        controls.setAttribute("aria-label", "Macro bar controls");
+        controls.dataset.tooltipDirection = "UP";
     }
-    let hidden = !carolingian && game.settings.get("motos-macro-bar", "auto-hide");
-    hotbar.classList.toggle("mmb-auto-hide", Boolean(hidden));
-    if (own && !carolingian) {
-        own.classList.toggle("fa-angle-up", Boolean(hidden));
-        own.classList.toggle("fa-angle-down", !hidden);
-        let label = hidden ? "Keep macro bar visible" : "Auto-hide macro bar";
-        if (own.dataset.tooltip !== label) {
-            own.dataset.tooltip = label;
-            own.setAttribute("aria-label", label);
-        }
+    if (!hotbar.querySelector(":scope > .mmb-hover-area")) {
+        const hoverArea = document.createElement("div");
+        hoverArea.className = "mmb-hover-area";
+        hoverArea.setAttribute("aria-hidden", "true");
+        hotbar.prepend(hoverArea);
+    }
+    if (hotbar.classList.contains("collapsed")) {
+        suppressedCollapse.add(hotbar);
+        hotbar.classList.remove("collapsed");
+    }
+    let collapse = controls.querySelector("[data-action=motoToggleVisibility]");
+    if (!collapse) {
+        collapse = document.createElement("button");
+        collapse.type = "button";
+        collapse.className = "ui-control icon fa-solid";
+        collapse.dataset.action = "motoToggleVisibility";
+        controls.append(collapse);
+    }
+    if (menu.parentElement !== controls) controls.append(menu);
+    if (menu.nextElementSibling !== collapse) menu.after(collapse);
+    if (collapse.nextElementSibling !== lock) collapse.after(lock);
+    const preference = getVisibilityPreference();
+    const mode = preference === "auto-hide-from-hide" ? "auto-hide" : preference;
+    const {label, icon} = visibilityModes[mode];
+    if (hotbar.dataset.mmbVisibility !== mode) hotbar.dataset.mmbVisibility = mode;
+    if (!collapse.classList.contains(icon)) {
+        collapse.classList.remove(...Object.values(visibilityModes).map(mode => mode.icon));
+        collapse.classList.add(icon);
+        const tooltip = `Macro bar is set to ${label}. Left-click to ${mode === "hide" ? "show" : "hide"}. `
+            + `Right-click to turn Auto-hide ${mode === "auto-hide" ? "off" : "on"}.`;
+        collapse.dataset.tooltip = tooltip;
+        collapse.setAttribute("aria-label", tooltip);
+    }
+    return controls;
+}
+
+export function restoreControls(hotbar) {
+    let controls = hotbar.querySelector("#hotbar-controls-right");
+    if (!controls?.classList.contains("mmb-control-group")) return;
+    let menu = controls.querySelector('button[data-action="menu"]');
+    let lock = controls.querySelector('button[data-action="lock"]');
+    if (menu) hotbar.querySelector("#hotbar-controls-left")?.append(menu);
+    if (lock) controls.querySelector(":scope > div.flexcol")?.prepend(lock);
+    controls.querySelector("[data-action=motoToggleVisibility]")?.remove();
+    hotbar.querySelector(":scope > .mmb-hover-area")?.remove();
+    controls.classList.remove("mmb-control-group");
+    controls.removeAttribute("role");
+    controls.removeAttribute("aria-label");
+    controls.dataset.tooltipDirection = "RIGHT";
+    delete hotbar.dataset.mmbVisibility;
+    if (suppressedCollapse.delete(hotbar)) {
+        const saved = game.modules.get("crlngn-ui")?.active ? game.user.getFlag("crlngn-ui", "hotbarCollapsed") : undefined;
+        hotbar.classList.toggle("collapsed", saved ?? true);
     }
 }
 
@@ -91,9 +152,16 @@ export function installHotbar() {
     CONFIG.ui.hotbar = class MotoMacroBar extends OriginalHotbar {
         static DEFAULT_OPTIONS = {
             actions: {
-                motoToggleHide: async function () {
-                    let hidden = game.settings.get("motos-macro-bar", "auto-hide");
-                    await game.settings.set("motos-macro-bar", "auto-hide", !hidden);
+                motoToggleVisibility: {
+                    buttons: [0, 2],
+                    handler: async function (event) {
+                        const preference = getVisibilityPreference();
+                        const rightClick = event.type === "contextmenu";
+                        if (rightClick) event.preventDefault();
+                        const next = rightClick ? rightClickModes[preference] : preference === "hide" ? "show" : "hide";
+                        await game.settings.set("motos-macro-bar", "visibility", next);
+                        syncControls(this.element);
+                    }
                 }
             }
         };
@@ -103,11 +171,11 @@ export function installHotbar() {
             this.element.classList.toggle("mmb-owned", enabled);
             if (enabled) {
                 buildPages(this.element, this.page);
-                syncHideControl(this.element);
+                syncControls(this.element);
             } else {
+                restoreControls(this.element);
                 this.element.querySelector("#hotbar-page")?.remove();
-                this.element.querySelector("[data-action=motoToggleHide]")?.remove();
-                this.element.classList.remove("mmb-active", "mmb-auto-hide");
+                this.element.classList.remove("mmb-active");
             }
             await super._onRender(context, options);
         }

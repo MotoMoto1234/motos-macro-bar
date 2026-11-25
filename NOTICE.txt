@@ -1,4 +1,4 @@
-Moto's Macro Bar 1.0.2
+Moto's Macro Bar
 New standalone module and modifications by Moto, 2026-11-01.
 Distributed under the GNU General Public License, version 3 (see LICENSE).
 This archive contains the complete, editable source; no build step is required.
